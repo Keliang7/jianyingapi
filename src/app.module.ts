@@ -4,9 +4,16 @@ import { AppService } from './app.service';
 import { RedisModule } from './redis/redis.module';
 import { DraftModule } from './modules/draft/draft.module';
 import { FileModule } from './shared/file/file.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
-  imports: [RedisModule, FileModule, DraftModule],
+  imports: [
+    ServeStaticModule.forRoot({ rootPath: join(__dirname, '..', 'public') }),
+    RedisModule,
+    FileModule,
+    DraftModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

@@ -9,7 +9,6 @@ export class DraftController {
 
   @Get('create')
   getProfile(@Param('width') width: number, @Param('height') height: number) {
-    console.log('get');
     const draftInfo = this.draftService.createDraft(width, height);
     return draftInfo;
   }
