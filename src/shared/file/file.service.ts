@@ -13,4 +13,32 @@ export class FileService {
     await fsp.mkdir(path.dirname(filePath), { recursive: true });
     return fsp.writeFile(filePath, JSON.stringify(obj, null, 2), 'utf8');
   }
+
+  async writeStreamToFile(
+    fileType: 'audio' | 'video' | 'image' | 'other',
+    fileName: string,
+    stream: NodeJS.ReadableStream,
+  ): Promise<{
+    filePath: string;
+    fileName: string;
+  }> {
+    const targetPath = path.resolve(process.cwd(), 'public'); // 找到 public 目录
+
+    await fsp.mkdir(path.join(targetPath, fileType), { recursive: true }); // 创建文件夹
+
+    const fs = await import('fs');
+    return await new Promise((resolve, reject) => {
+      const writer = fs.createWriteStream(
+        path.join(targetPath, fileType, fileName),
+      );
+      stream.pipe(writer);
+      writer.on('finish', () =>
+        resolve({
+          filePath: path.join('/public', fileType, fileName),
+          fileName,
+        }),
+      );
+      writer.on('error', reject);
+    });
+  }
 }
