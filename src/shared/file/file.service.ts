@@ -41,4 +41,19 @@ export class FileService {
       writer.on('error', reject);
     });
   }
+
+  async moveFile(
+    oldPath: string,
+    newPath: string,
+  ): Promise<{
+    filePath: string;
+    fileName: string;
+  }> {
+    await fsp.mkdir(path.dirname(newPath), { recursive: true });
+    await fsp.rename(oldPath, newPath);
+    return {
+      filePath: newPath.replace(process.cwd(), ''),
+      fileName: path.basename(newPath),
+    };
+  }
 }

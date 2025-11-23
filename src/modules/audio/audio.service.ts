@@ -4,6 +4,8 @@ import { HttpService } from '@nestjs/axios';
 import { parseFile } from 'music-metadata';
 import { lastValueFrom } from 'rxjs';
 import * as path from 'path';
+import { ConfigKeys } from 'src/common/constants/config-keys.enum';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class AudioService {
@@ -13,7 +15,7 @@ export class AudioService {
   ) {}
 
   /** 下载音频到指定目录 */
-  async downloadToLocal(url: string): Promise<{
+  private async downloadToLocal(url: string): Promise<{
     filePath: string;
     fileName: string;
   }> {
@@ -81,49 +83,78 @@ export class AudioService {
     }
   }
 
-  /* 
-    const createAudioMaterial = () => {
-    const audioMaterialPath = path.join(__dirname, "audio.material.json");
-    const audioMaterialInfo = JSON.parse(
-      fs.readFileSync(audioMaterialPath, "utf-8")
+  private async createAudioMaterial(
+    id: string,
+    filePath: string,
+    filename: string,
+  ) {
+    const materialInfoPath = path.resolve(
+      __dirname,
+      '../../__templates__/audio/audio.material.json',
     );
+    const materialInfo = await this.file.readJson(materialInfoPath);
+
     const baseInfo = {
-      id: id,
+      id,
       name: filename,
-      path:
-        "##_draftpath_placeholder_0E685133-18CE-45ED-8CB8-2904A212EC80_##/assets/" +
-        filename,
+      path: ConfigKeys.JIANYING_DIR + filePath,
+    };
+    return { ...materialInfo, ...baseInfo };
+  }
+
+  private async createAudioTrack(material_id: string, duration_us: number) {
+    const trackInfoPath = path.resolve(
+      __dirname,
+      '../../__templates__/audio/audio.track.json',
+    );
+
+    const trackInfo = await this.file.readJson(trackInfoPath);
+
+    const seg = {
+      id: randomUUID(),
+      material_id,
+      source_timerange: {
+        duration: duration_us,
+        start: 0,
+      },
+      target_timerange: {
+        duration: duration_us,
+        start: 0,
+      },
+      volume: 0.3,
     };
 
-    return { ...audioMaterialInfo, ...baseInfo };
-  };
-
-  const createAudioTrack = () => {
-    const audioTrackPath = path.join(__dirname, "audio.track.json");
-    const audioTrackInfo = JSON.parse(fs.readFileSync(audioTrackPath, "utf-8"));
-
-    audioTrackInfo.id = randomUUID();
-
-    const seg = audioTrackInfo.segments[0];
-    seg.id = randomUUID();
-    seg.material_id = id;
-    seg.source_timerange = {
-      duration: duration_us,
-      start: 0,
+    trackInfo.segments[0] = {
+      ...trackInfo.segments[0],
+      ...seg,
     };
-    seg.target_timerange = {
-      duration: duration_us,
-      start: 0,
-    };
-    seg.volume = 0.3;
+    return trackInfo;
+  }
 
-    return audioTrackInfo;
-  };
+  private async moveFileToDraftDir(
+    draftId: string,
+    audioInfo: { filePath: string; fileName: string },
+  ) {
+    const destPath = `/public/drafts/${draftId}/audio/${audioInfo.fileName}`;
+    await this.file.moveFile(audioInfo.filePath, destPath);
+    return destPath;
+  }
 
-  const output = {
-    material: createAudioMaterial(),
-    track: createAudioTrack(),
-  };
-  
-  */
+  async addAudio(
+    draftId: string,
+    audioInfo: { filePath: string; fileName: string; duration_us: number },
+  ) {
+    const material_id = randomUUID();
+    const material = await this.createAudioMaterial(
+      material_id,
+      audioInfo.filePath,
+      audioInfo.fileName,
+    );
+    const track = await this.createAudioTrack(
+      material_id,
+      audioInfo.duration_us,
+    );
+
+    return { draftId };
+  }
 }
