@@ -12,16 +12,16 @@ export class VideoController {
     return videoInfo;
   }
 
-  // @Get('add')
-  // add() {
-  //   const draftInfo = this.videoService.addvideo(
-  //     '9a8c18fa-25cb-4d62-8da9-9a1166055036',
-  //     {
-  //       fileName: '林俊杰_-_谢幕_MQ.mp3',
-  //       filePath: '/audio/林俊杰_-_谢幕_MQ.mp3',
-  //       duration_us: 243905306,
-  //     },
-  //   );
-  //   return draftInfo;
-  // }
+  @Get('add')
+  add() {
+    const draftInfo = this.videoService.addVideo(
+      '12872578-b14a-4671-a1a3-712cf512cd88',
+      {
+        fileName: 'RPReplay_Final1736709500.MP4',
+        filePath: 'video/RPReplay_Final1736709500.MP4',
+        duration_us: 9380861,
+      },
+    );
+    return draftInfo;
+  }
 }

@@ -97,7 +97,7 @@ export class AudioService {
     const baseInfo = {
       id,
       name: filename,
-      path: ConfigKeys.JIANYING_DIR + filePath,
+      path: ConfigKeys.JIANYING_DIR + '/' + filePath,
     };
     return { ...materialInfo, ...baseInfo };
   }

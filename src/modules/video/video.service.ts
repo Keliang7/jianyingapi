@@ -83,29 +83,36 @@ export class VideoService {
     }
   }
 
-  private async createAudioMaterial(
+  private async createVideoMaterial(
     id: string,
     filePath: string,
     filename: string,
+    duration_us: number,
   ) {
     const materialInfoPath = path.resolve(
       __dirname,
-      '../../__templates__/audio/audio.material.json',
+      '../../__templates__/video/video.material.json',
     );
     const materialInfo = await this.file.readJson(materialInfoPath);
 
     const baseInfo = {
+      duration: duration_us,
       id,
-      name: filename,
-      path: ConfigKeys.JIANYING_DIR + filePath,
+      material_name: filename,
+      path: ConfigKeys.JIANYING_DIR + '/' + filePath,
+      stable: {
+        matrix_path: '',
+        stable_level: 0,
+        time_range: { duration: duration_us, start: 0 },
+      },
     };
     return { ...materialInfo, ...baseInfo };
   }
 
-  private async createAudioTrack(material_id: string, duration_us: number) {
+  private async createVideoTrack(material_id: string, duration_us: number) {
     const trackInfoPath = path.resolve(
       __dirname,
-      '../../__templates__/audio/audio.track.json',
+      '../../__templates__/video/video.track.json',
     );
 
     const trackInfo = await this.file.readJson(trackInfoPath);
@@ -121,7 +128,7 @@ export class VideoService {
         duration: duration_us,
         start: 0,
       },
-      volume: 0.3,
+      volume: 1,
     };
 
     trackInfo.segments[0] = {
@@ -133,24 +140,22 @@ export class VideoService {
 
   private async moveFileToDraftDir(
     draftId: string,
-    audioInfo: { filePath: string; fileName: string },
+    videoInfo: { filePath: string; fileName: string },
   ) {
-    // 旧路径 = 临时下载目录返回的 audioInfo.filePath
     const oldPath = path.join(
       process.cwd(),
       'public',
-      'audio',
-      audioInfo.fileName,
+      'video',
+      videoInfo.fileName,
     );
 
-    // 新路径 = 草稿 audio 目录
     const newPath = path.join(
       process.cwd(),
       'public',
       'drafts',
       draftId,
-      'audio',
-      audioInfo.fileName,
+      'video',
+      videoInfo.fileName,
     );
 
     console.log(oldPath, newPath);
@@ -161,45 +166,22 @@ export class VideoService {
     return filePath;
   }
 
-  private getMaxTrackEnd(tracks) {
-    let maxEnd = 0;
-
-    for (const track of tracks) {
-      if (!track.segments || track.segments.length === 0) continue;
-
-      for (const seg of track.segments) {
-        const tr = seg.target_timerange;
-        if (!tr) continue;
-
-        // 兼容：剪映草稿里没有 end 字段
-        const start = tr.start ?? 0;
-        const duration = tr.duration ?? 0;
-        const end = tr.end ?? start + duration;
-
-        if (end > maxEnd) {
-          maxEnd = end;
-        }
-      }
-    }
-
-    return maxEnd;
-  }
-
-  async addAudio(
+  async addVideo(
     draftId: string,
-    audioInfo: { filePath: string; fileName: string; duration_us: number },
+    videoInfo: { filePath: string; fileName: string; duration_us: number },
   ) {
-    await this.moveFileToDraftDir(draftId, audioInfo);
+    await this.moveFileToDraftDir(draftId, videoInfo);
 
     const material_id = randomUUID();
-    const material = await this.createAudioMaterial(
+    const material = await this.createVideoMaterial(
       material_id,
-      audioInfo.filePath,
-      audioInfo.fileName,
+      videoInfo.filePath,
+      videoInfo.fileName,
+      videoInfo.duration_us,
     );
-    const track = await this.createAudioTrack(
+    const track = await this.createVideoTrack(
       material_id,
-      audioInfo.duration_us,
+      videoInfo.duration_us,
     );
 
     const draftInfoPath = path.resolve(
@@ -212,14 +194,10 @@ export class VideoService {
 
     const draft_info = await this.file.readJson(draftInfoPath);
 
-    draft_info.materials.audios.push(material);
+    draft_info.materials.videos.push(material);
     draft_info.tracks.push(track);
 
     console.log(draft_info);
-
-    const duration_us = this.getMaxTrackEnd(draft_info.tracks);
-
-    draft_info.duration = duration_us;
 
     await this.file.writeJson(draftInfoPath, draft_info);
 

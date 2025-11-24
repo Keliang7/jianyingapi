@@ -14,10 +14,10 @@ export class AudioController {
   @Get('add')
   getUserById() {
     const draftInfo = this.audioService.addAudio(
-      '9a8c18fa-25cb-4d62-8da9-9a1166055036',
+      '12872578-b14a-4671-a1a3-712cf512cd88',
       {
         fileName: '林俊杰_-_谢幕_MQ.mp3',
-        filePath: '/audio/林俊杰_-_谢幕_MQ.mp3',
+        filePath: 'audio/林俊杰_-_谢幕_MQ.mp3',
         duration_us: 243905306,
       },
     );
