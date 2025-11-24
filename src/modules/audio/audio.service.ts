@@ -69,7 +69,7 @@ export class AudioService {
       const { fileName, filePath } = await this.downloadToLocal(url);
 
       const audioDuration = await this.getAudioDuration(
-        path.join(process.cwd(), filePath),
+        path.join(process.cwd(), 'public', filePath),
       );
 
       return {
@@ -135,15 +135,62 @@ export class AudioService {
     draftId: string,
     audioInfo: { filePath: string; fileName: string },
   ) {
-    const destPath = `/public/drafts/${draftId}/audio/${audioInfo.fileName}`;
-    await this.file.moveFile(audioInfo.filePath, destPath);
-    return destPath;
+    // 旧路径 = 临时下载目录返回的 audioInfo.filePath
+    const oldPath = path.join(
+      process.cwd(),
+      'public',
+      'audio',
+      audioInfo.fileName,
+    );
+
+    // 新路径 = 草稿 audio 目录
+    const newPath = path.join(
+      process.cwd(),
+      'public',
+      'drafts',
+      draftId,
+      'audio',
+      audioInfo.fileName,
+    );
+
+    console.log(oldPath, newPath);
+
+    const { filePath } = await this.file.moveFile(oldPath, newPath);
+
+    // // filePath 是相对项目根目录的路径
+    return filePath;
+  }
+
+  private getMaxTrackEnd(tracks) {
+    let maxEnd = 0;
+
+    for (const track of tracks) {
+      if (!track.segments || track.segments.length === 0) continue;
+
+      for (const seg of track.segments) {
+        const tr = seg.target_timerange;
+        if (!tr) continue;
+
+        // 兼容：剪映草稿里没有 end 字段
+        const start = tr.start ?? 0;
+        const duration = tr.duration ?? 0;
+        const end = tr.end ?? start + duration;
+
+        if (end > maxEnd) {
+          maxEnd = end;
+        }
+      }
+    }
+
+    return maxEnd;
   }
 
   async addAudio(
     draftId: string,
     audioInfo: { filePath: string; fileName: string; duration_us: number },
   ) {
+    await this.moveFileToDraftDir(draftId, audioInfo);
+
     const material_id = randomUUID();
     const material = await this.createAudioMaterial(
       material_id,
@@ -154,6 +201,27 @@ export class AudioService {
       material_id,
       audioInfo.duration_us,
     );
+
+    const draftInfoPath = path.resolve(
+      process.cwd(),
+      'public',
+      'drafts',
+      draftId,
+      'draft_info.json',
+    );
+
+    const draft_info = await this.file.readJson(draftInfoPath);
+
+    draft_info.materials.audios.push(material);
+    draft_info.tracks.push(track);
+
+    console.log(draft_info);
+
+    const duration_us = this.getMaxTrackEnd(draft_info.tracks);
+
+    draft_info.duration = duration_us;
+
+    await this.file.writeJson(draftInfoPath, draft_info);
 
     return { draftId };
   }

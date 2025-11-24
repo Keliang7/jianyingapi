@@ -34,7 +34,7 @@ export class FileService {
       stream.pipe(writer);
       writer.on('finish', () =>
         resolve({
-          filePath: path.join('/public', fileType, fileName),
+          filePath: path.join(fileType, fileName),
           fileName,
         }),
       );
