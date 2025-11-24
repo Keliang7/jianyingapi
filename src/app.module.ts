@@ -6,6 +6,8 @@ import { DraftModule } from './modules/draft/draft.module';
 import { AudioModule } from './modules/audio/audio.module';
 import { VideoModule } from './modules/video/video.module';
 import { TextModule } from './modules/text/text.module';
+import { TtsModule } from './modules/tts/tts.module';
+import { DubbingModule } from './modules/dubbing/dubbing.module';
 import { FileModule } from './shared/file/file.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
@@ -19,6 +21,8 @@ import { join } from 'path';
     AudioModule,
     VideoModule,
     TextModule,
+    TtsModule,
+    DubbingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

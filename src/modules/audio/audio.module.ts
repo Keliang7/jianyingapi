@@ -9,5 +9,6 @@ import { AudioController } from './audio.controller';
   imports: [FileModule, HttpModule],
   controllers: [AudioController],
   providers: [AudioService],
+  exports: [AudioService],
 })
 export class AudioModule {}
