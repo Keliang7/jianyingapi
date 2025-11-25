@@ -21,10 +21,11 @@ export class DubbingService {
     private readonly audio: AudioService,
   ) {}
 
-  /**
-   * 将一段文本按标点或长度分割成多段
-   */
-  splitText(text: string, maxLen = 200, removePunctuation = false): string[] {
+  private splitText(
+    text: string,
+    maxLen = 200,
+    removePunctuation = false,
+  ): string[] {
     if (!text || typeof text !== 'string') return [];
 
     const punctuations = /[，。！!？?、；;]/g;
@@ -58,12 +59,10 @@ export class DubbingService {
   async generateAudio(texts: string) {
     const textsArr = this.splitText(texts, 200, true);
 
-    // 根据分段生成多个音频
     const audioResults = [];
     for (const segment of textsArr) {
-      // 调用 TTS 服务生成音频
       const localPath = await this.tts.generateMp3(segment, segment + '.mp3');
-      audioResults.push(localPath); // 假设返回的是 { url, file }
+      audioResults.push(localPath);
     }
 
     return {
@@ -94,34 +93,13 @@ export class DubbingService {
     return { timeline };
   }
 
-  // 先生成material
-  // 再生成一个track
-  // track里面有一个segment对应material
-  async addDubbing(
-    draftId: string,
-    audioInfos: { filePath: string; fileName: string; duration_us: number }[],
-  ) {
-    const materials = [];
-    const materialTemplatePath = path.resolve(
-      __dirname,
-      '../../__templates__/audio/audio.material.json',
-    );
-    const materialInfoTemplate = await this.file.readJson(materialTemplatePath);
-
-    const trackInfoTemplatePath = path.resolve(
-      __dirname,
-      '../../__templates__/audio/audio.track.json',
-    );
-    const trackInfoTemplate = await this.file.readJson(trackInfoTemplatePath);
-  }
-
   // 生成material
   async addMaterial({ filePath, fileName, draft_id }): Promise<{
     material_id: string;
   }> {
     const baseMaterialInfoPath = path.resolve(
       __dirname,
-      '../../__templates__/audio/audio.material.json',
+      '../../__templates__/material/material.json',
     );
 
     const baseMaterialInfo = await this.file.readJson(baseMaterialInfoPath);
@@ -129,7 +107,7 @@ export class DubbingService {
     const materialInfo = {
       id: material_id,
       name: fileName,
-      path: ConfigKeys.JIANYING_DIR + '/' + filePath,
+      path: ConfigKeys.JIANYING_DIR + filePath,
     };
     const mergedMaterialInfo = { ...baseMaterialInfo, ...materialInfo };
 
@@ -138,6 +116,11 @@ export class DubbingService {
     draft_info.materials.audios.push(mergedMaterialInfo);
 
     await this.draft.setDraft(draft_id, draft_info);
+
+    await this.file.moveFile(
+      path.resolve(process.cwd(), 'public', 'audio', fileName),
+      path.resolve(process.cwd(), 'public', 'draft_id', 'audio', fileName),
+    );
 
     return {
       material_id,
@@ -150,7 +133,7 @@ export class DubbingService {
   }> {
     const trackInfoPath = path.resolve(
       __dirname,
-      '../../__templates__/audio/audio.track.json',
+      '../../__templates__/track/track.json',
     );
 
     const trackInfo = await this.file.readJson(trackInfoPath);
@@ -173,7 +156,7 @@ export class DubbingService {
   // 生成segment
   async addSegment(
     draft_id,
-    trackId,
+    track_id,
     material_id,
     fileInfo: { duration_us: number },
   ): Promise<{
@@ -181,16 +164,21 @@ export class DubbingService {
   }> {
     const baseSegmentInfoPath = path.resolve(
       __dirname,
-      '../../__templates__/audio/audio.track.json',
+      '../../__templates__/segments/segments.json',
     );
 
     const baseSegmentInfo = await this.file.readJson(baseSegmentInfoPath);
 
     const draft_info = await this.draft.getDraft(draft_id);
 
-    const track = draft_info.tracks.find((r) => r.id === trackId);
+    const track = draft_info.tracks.find((r) => r.id === track_id);
 
     const lastSegment = track.segments[track.segments.length - 1];
+
+    const start = lastSegment
+      ? lastSegment.target_timerange.start +
+        lastSegment.target_timerange.duration
+      : 0;
 
     const segment_id = randomUUID();
     const info = {
@@ -202,9 +190,11 @@ export class DubbingService {
       },
       target_timerange: {
         duration: fileInfo.duration_us,
-        start: lastSegment.start + lastSegment.duration,
+        start,
       },
     };
+
+    console.log(info);
 
     const mergedSegmentInfo = { ...baseSegmentInfo, ...info };
 
