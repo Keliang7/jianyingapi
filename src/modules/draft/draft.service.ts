@@ -49,4 +49,26 @@ export class DraftService {
     await this.createDraftMetaInfo(draftId);
     return { draftId };
   }
+
+  async getDraft(id: string) {
+    const draftPath = path.resolve(
+      process.cwd(),
+      'public',
+      'drafts',
+      id,
+      'draft_info.json',
+    );
+    return this.file.readJson(draftPath);
+  }
+
+  async setDraft(id: string, data: any) {
+    const draftPath = path.resolve(
+      process.cwd(),
+      'public',
+      'drafts',
+      id,
+      'draft_info.json',
+    );
+    await this.file.writeJson(draftPath, data);
+  }
 }

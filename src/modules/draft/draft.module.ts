@@ -7,5 +7,6 @@ import { FileModule } from '@/shared/file/file.module';
   imports: [FileModule],
   controllers: [DraftController],
   providers: [DraftService],
+  exports: [DraftService],
 })
 export class DraftModule {}

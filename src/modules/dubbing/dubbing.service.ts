@@ -8,12 +8,14 @@ import { ConfigKeys } from 'src/common/constants/config-keys.enum';
 import { randomUUID } from 'crypto';
 import { TtsService } from '@/modules/tts/tts.service';
 import { AudioService } from '@/modules/audio/audio.service';
+import { DraftService } from '../draft/draft.service';
 import * as https from 'node:https';
 
 @Injectable()
 export class DubbingService {
   constructor(
     private readonly file: FileService,
+    private readonly draft: DraftService,
     private readonly http: HttpService,
     private readonly tts: TtsService,
     private readonly audio: AudioService,
@@ -114,7 +116,7 @@ export class DubbingService {
   }
 
   // 生成material
-  async addMaterial({ filePath, fileName, draftId }): Promise<{
+  async addMaterial({ filePath, fileName, draft_id }): Promise<{
     material_id: string;
   }> {
     const baseMaterialInfoPath = path.resolve(
@@ -131,18 +133,11 @@ export class DubbingService {
     };
     const mergedMaterialInfo = { ...baseMaterialInfo, ...materialInfo };
 
-    const draftInfoPath = path.resolve(
-      process.cwd(),
-      'public',
-      'drafts',
-      draftId,
-      'draft_info.json',
-    );
-    const draft_info = await this.file.readJson(draftInfoPath);
+    const draft_info = await this.draft.getDraft(draft_id);
 
     draft_info.materials.audios.push(mergedMaterialInfo);
 
-    await this.file.writeJson(draftInfoPath, draft_info);
+    await this.draft.setDraft(draft_id, draft_info);
 
     return {
       material_id,
@@ -150,7 +145,7 @@ export class DubbingService {
   }
 
   // 生成track
-  async addTrack(draftId): Promise<{
+  async addTrack(draft_id): Promise<{
     track_id: string;
   }> {
     const trackInfoPath = path.resolve(
@@ -164,19 +159,11 @@ export class DubbingService {
 
     trackInfo.id = track_id;
 
-    const draftInfoPath = path.resolve(
-      process.cwd(),
-      'public',
-      'drafts',
-      draftId,
-      'draft_info.json',
-    );
-
-    const draft_info = await this.file.readJson(draftInfoPath);
+    const draft_info = await this.draft.getDraft(draft_id);
 
     draft_info.tracks.push(trackInfo);
 
-    await this.file.writeJson(draftInfoPath, draft_info);
+    await this.draft.setDraft(draft_id, draft_info);
 
     return {
       track_id,
@@ -185,7 +172,7 @@ export class DubbingService {
 
   // 生成segment
   async addSegment(
-    draftId,
+    draft_id,
     trackId,
     material_id,
     fileInfo: { duration_us: number },
@@ -199,15 +186,7 @@ export class DubbingService {
 
     const baseSegmentInfo = await this.file.readJson(baseSegmentInfoPath);
 
-    const draftInfoPath = path.resolve(
-      process.cwd(),
-      'public',
-      'drafts',
-      draftId,
-      'draft_info.json',
-    );
-
-    const draft_info = await this.file.readJson(draftInfoPath);
+    const draft_info = await this.draft.getDraft(draft_id);
 
     const track = draft_info.tracks.find((r) => r.id === trackId);
 
@@ -231,7 +210,7 @@ export class DubbingService {
 
     track.segments.push(mergedSegmentInfo);
 
-    await this.file.writeJson(draftInfoPath, draft_info);
+    await this.draft.setDraft(draft_id, draft_info);
 
     return {
       segment_id,
