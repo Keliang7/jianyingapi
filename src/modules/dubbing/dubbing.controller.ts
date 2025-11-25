@@ -44,15 +44,12 @@ export class DubbingController {
     );
   }
 
-  @Post('/get-time-line')
-  buildTimeline(
-    @Body()
-    body: {
-      path: string;
-      duration_s: number;
-      duration_us: number;
-    }[],
-  ) {
-    return this.dubbingService.buildTimeline(body);
+  @Post('/texts2segments')
+  async texts2Segments(@Body() body: { texts: string; draft_id: string }) {
+    return this.dubbingService.texts2Segments(
+      body.texts ||
+        '庆历四年春，滕子京谪守巴陵郡。越明年，政通人和，百废具兴，乃重修岳阳楼，增其旧制，刻唐贤今人诗赋于其上；属予作文以记之',
+      body.draft_id || '12872578-b14a-4671-a1a3-712cf512cd88',
+    );
   }
 }

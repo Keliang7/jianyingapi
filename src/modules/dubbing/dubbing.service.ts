@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { FileService } from '@/shared/file/file.service';
 import { HttpService } from '@nestjs/axios';
-import { parseFile } from 'music-metadata';
-import { lastValueFrom } from 'rxjs';
 import * as path from 'path';
 import { ConfigKeys } from 'src/common/constants/config-keys.enum';
 import { randomUUID } from 'crypto';
 import { TtsService } from '@/modules/tts/tts.service';
 import { AudioService } from '@/modules/audio/audio.service';
 import { DraftService } from '../draft/draft.service';
-import * as https from 'node:https';
 
 @Injectable()
 export class DubbingService {
@@ -119,7 +116,14 @@ export class DubbingService {
 
     await this.file.moveFile(
       path.resolve(process.cwd(), 'public', 'audio', fileName),
-      path.resolve(process.cwd(), 'public', 'draft_id', 'audio', fileName),
+      path.resolve(
+        process.cwd(),
+        'public',
+        'drafts',
+        draft_id,
+        'audio',
+        fileName,
+      ),
     );
 
     return {
@@ -205,5 +209,23 @@ export class DubbingService {
     return {
       segment_id,
     };
+  }
+
+  // texts 2 segments
+  async texts2Segments(texts: string, draft_id: string) {
+    const { track_id } = await this.addTrack(draft_id);
+    const { files } = await this.generateAudio(texts);
+
+    for (const file of files) {
+      const { material_id } = await this.addMaterial({
+        filePath: file.path,
+        fileName: file.filename,
+        draft_id,
+      });
+
+      await this.addSegment(draft_id, track_id, material_id, file);
+    }
+
+    return { draft_id };
   }
 }
