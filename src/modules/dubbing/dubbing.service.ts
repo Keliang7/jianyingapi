@@ -198,11 +198,11 @@ export class DubbingService {
       },
     };
 
-    console.log(info);
-
     const mergedSegmentInfo = { ...baseSegmentInfo, ...info };
 
     track.segments.push(mergedSegmentInfo);
+
+    draft_info.duration = fileInfo.duration_us + start;
 
     await this.draft.setDraft(draft_id, draft_info);
 
