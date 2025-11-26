@@ -1,21 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { FileService } from '@/shared/file/file.service';
-import { HttpService } from '@nestjs/axios';
 import * as path from 'path';
 import { ConfigKeys } from 'src/common/constants/config-keys.enum';
 import { randomUUID } from 'crypto';
 import { TtsService } from '@/modules/tts/tts.service';
-import { AudioService } from '@/modules/audio/audio.service';
 import { DraftService } from '../draft/draft.service';
+import { TextService } from '../text/text.service';
 
 @Injectable()
 export class DubbingService {
   constructor(
     private readonly file: FileService,
     private readonly draft: DraftService,
-    private readonly http: HttpService,
     private readonly tts: TtsService,
-    private readonly audio: AudioService,
+    private readonly text: TextService,
   ) {}
 
   private splitText(
@@ -214,6 +212,7 @@ export class DubbingService {
   // texts 2 segments
   async texts2Segments(texts: string, draft_id: string) {
     const { track_id } = await this.addTrack(draft_id);
+    const { track_id: text_track_id } = await this.text.addTrack(draft_id);
     const { files } = await this.generateAudio(texts);
 
     for (const file of files) {
@@ -224,6 +223,18 @@ export class DubbingService {
       });
 
       await this.addSegment(draft_id, track_id, material_id, file);
+
+      const text = file.filename.replace('.mp3', '');
+      const { material_id: text_material_id } = await this.text.addMaterial(
+        draft_id,
+        text,
+      );
+      await this.text.addSegment(
+        draft_id,
+        text_track_id,
+        text_material_id,
+        file,
+      );
     }
 
     return { draft_id };

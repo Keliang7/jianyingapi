@@ -1,95 +1,123 @@
 import { Injectable } from '@nestjs/common';
 import { FileService } from '@/shared/file/file.service';
+import { DraftService } from '../draft/draft.service';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 
 @Injectable()
 export class TextService {
-  constructor(private readonly file: FileService) {}
+  constructor(
+    private readonly file: FileService,
+    private readonly draft: DraftService,
+  ) {}
 
-  async createTextMaterial(id: string, text: string) {
-    const materialInfoPath = path.resolve(
+  async addMaterial(
+    draft_id: string,
+    text: string,
+  ): Promise<{
+    material_id: string;
+  }> {
+    const baseMaterialInfoPath = path.resolve(
       __dirname,
       '../../__templates__/text/text.material.json',
     );
-    const materialInfo = await this.file.readJson(materialInfoPath);
-    const textInfo = JSON.parse(materialInfo.content);
+
+    const baseMaterialInfo = await this.file.readJson(baseMaterialInfoPath);
+    const textInfo = JSON.parse(baseMaterialInfo.content);
+    const material_id = randomUUID();
+    baseMaterialInfo.id = material_id;
     textInfo.text = text;
     const content = JSON.stringify(textInfo);
+    baseMaterialInfo.content = content;
 
-    const baseInfo = {
-      id,
-      content,
-    };
+    const draft_info = await this.draft.getDraft(draft_id);
+
+    draft_info.materials.texts.push(baseMaterialInfo);
+
+    await this.draft.setDraft(draft_id, draft_info);
 
     return {
-      ...materialInfo,
-      ...baseInfo,
+      material_id,
     };
   }
 
-  private async createTextTrack(
-    material_id: string,
-    timeLine: { start: number; end: number },
-  ) {
+  async addTrack(draft_id: string): Promise<{
+    track_id: string;
+  }> {
     const trackInfoPath = path.resolve(
       __dirname,
-      '../../__templates__/text/text.track.json',
+      '../../__templates__/track/track.json',
     );
 
     const trackInfo = await this.file.readJson(trackInfoPath);
 
-    const seg = {
-      id: randomUUID(),
-      material_id,
-      source_timerange: {
-        duration: timeLine.end - timeLine.start,
-        start: timeLine.start,
-      },
-      target_timerange: {
-        duration: timeLine.end - timeLine.start,
-        start: timeLine.start,
-      },
-    };
+    const track_id = randomUUID();
 
-    trackInfo.segments[0] = {
-      ...trackInfo.segments[0],
-      ...seg,
-    };
+    trackInfo.id = track_id;
 
-    const baseInfo = {
-      id: randomUUID(),
-    };
+    trackInfo.type = 'text';
+
+    const draft_info = await this.draft.getDraft(draft_id);
+
+    draft_info.tracks.push(trackInfo);
+
+    await this.draft.setDraft(draft_id, draft_info);
+
     return {
-      ...trackInfo,
-      ...baseInfo,
+      track_id,
     };
   }
 
-  async addText(
-    draftId: string,
-    text: string,
-    timeLine: { start: number; end: number },
-  ) {
-    const material_id = randomUUID();
-    const material = await this.createTextMaterial(material_id, text);
-    const track = await this.createTextTrack(material_id, timeLine);
-
-    const draftInfoPath = path.resolve(
-      process.cwd(),
-      'public',
-      'drafts',
-      draftId,
-      'draft_info.json',
+  async addSegment(
+    draft_id,
+    track_id,
+    material_id,
+    fileInfo: { duration_us: number },
+  ): Promise<{
+    segment_id: string;
+  }> {
+    const baseSegmentInfoPath = path.resolve(
+      __dirname,
+      '../../__templates__/text/segments.json',
     );
 
-    const draft_info = await this.file.readJson(draftInfoPath);
+    const baseSegmentInfo = await this.file.readJson(baseSegmentInfoPath);
 
-    draft_info.materials.texts.push(material);
-    draft_info.tracks.push(track);
+    const draft_info = await this.draft.getDraft(draft_id);
 
-    await this.file.writeJson(draftInfoPath, draft_info);
+    const track = draft_info.tracks.find((r) => r.id === track_id);
 
-    return { draftId };
+    const lastSegment = track.segments[track.segments.length - 1];
+
+    const start = lastSegment
+      ? lastSegment.target_timerange.start +
+        lastSegment.target_timerange.duration
+      : 0;
+
+    const segment_id = randomUUID();
+    const info = {
+      id: segment_id,
+      material_id,
+      source_timerange: {
+        duration: fileInfo.duration_us,
+        start: 0,
+      },
+      target_timerange: {
+        duration: fileInfo.duration_us,
+        start,
+      },
+    };
+
+    const mergedSegmentInfo = { ...baseSegmentInfo, ...info };
+
+    track.segments.push(mergedSegmentInfo);
+
+    draft_info.duration = fileInfo.duration_us + start;
+
+    await this.draft.setDraft(draft_id, draft_info);
+
+    return {
+      segment_id,
+    };
   }
 }
